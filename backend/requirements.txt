@@ -4,3 +4,5 @@ numpy
 scipy
 yfinance
 pandas
+pytest
+flake8
