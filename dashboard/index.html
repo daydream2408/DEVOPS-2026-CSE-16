@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Project Progress Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Commit Progress Dashboard</h1>
+    <p class="sub">Live from GitHub — edit <code>OWNER</code>/<code>REPO</code> at the top of dashboard.js</p>
+
+    <div id="status" class="status">Loading commit history…</div>
+
+    <div class="panel">
+      <h2>Commits per contributor</h2>
+      <div id="authorBars"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Commits over time</h2>
+      <canvas id="timelineChart" width="900" height="260"></canvas>
+    </div>
+
+    <div class="panel">
+      <h2>Recent commits</h2>
+      <ul id="commitList" class="commit-list"></ul>
+    </div>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>
