@@ -6,6 +6,10 @@ services:
     container_name: options-backend
     ports:
       - "8000:8000"
+    networks:
+      default:
+        aliases:
+          - backend-service
     environment:
       - PYTHONUNBUFFERED=1
     healthcheck:
@@ -20,7 +24,7 @@ services:
       context: ./frontend
     container_name: options-frontend
     ports:
-      - "3000:80"
+      - "3002:80"
     depends_on:
       - backend
     restart: unless-stopped
