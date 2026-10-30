@@ -1,0 +1,176 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alerts
+  namespace: monte-carlo-sim
+  labels:
+    app: prometheus
+data:
+  alerts.yml: |
+    groups:
+      # -------------------------------------------------------
+      # Service Availability Alerts
+      # -------------------------------------------------------
+      - name: service_availability
+        rules:
+          - alert: BackendDown
+            expr: up{job="options-backend"} == 0
+            for: 1m
+            labels:
+              severity: critical
+              team: devops
+            annotations:
+              summary: "Options Backend is DOWN"
+              description: "The options-backend service has been unreachable for more than 1 minute. Instance: {{ $labels.instance }}"
+
+          - alert: PrometheusDown
+            expr: up{job="prometheus"} == 0
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Prometheus self-scrape failing"
+              description: "Prometheus cannot scrape itself — may indicate a configuration issue."
+
+          - alert: PodCrashLooping
+            expr: rate(kube_pod_container_status_restarts_total{namespace="monte-carlo-sim"}[5m]) > 0
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Pod {{ $labels.pod }} is crash-looping"
+              description: "Container {{ $labels.container }} in pod {{ $labels.pod }} has been restarting frequently."
+
+      # -------------------------------------------------------
+      # HTTP Traffic & Error Rate Alerts
+      # -------------------------------------------------------
+      - name: http_traffic
+        rules:
+          - alert: HighErrorRate
+            expr: |
+              sum(rate(http_requests_total{status=~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total[5m])) > 0.05
+            for: 2m
+            labels:
+              severity: critical
+              team: backend
+            annotations:
+              summary: "High HTTP 5xx error rate (> 5%)"
+              description: "More than 5% of all requests are returning 5xx errors. Current rate: {{ $value | humanizePercentage }}"
+
+          - alert: HighClientErrorRate
+            expr: |
+              sum(rate(http_requests_total{status=~"4.."}[5m]))
+              /
+              sum(rate(http_requests_total[5m])) > 0.15
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High HTTP 4xx error rate (> 15%)"
+              description: "More than 15% of requests are returning 4xx errors — may indicate client-side issues or bad inputs."
+
+          - alert: NoIncomingTraffic
+            expr: sum(rate(http_requests_total[5m])) == 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "No HTTP traffic received for 5 minutes"
+              description: "The backend API has received zero requests in the last 5 minutes. Check if the service is reachable."
+
+      # -------------------------------------------------------
+      # Latency Alerts
+      # -------------------------------------------------------
+      - name: latency
+        rules:
+          - alert: HighSimulationLatencyP99
+            expr: |
+              histogram_quantile(0.99,
+                sum by (le) (rate(monte_carlo_simulation_duration_seconds_bucket[5m]))
+              ) > 2.0
+            for: 3m
+            labels:
+              severity: warning
+              team: backend
+            annotations:
+              summary: "Monte Carlo simulation p99 latency > 2s"
+              description: "The 99th percentile simulation latency has exceeded 2 seconds for the past 3 minutes. Current p99: {{ $value | humanizeDuration }}"
+
+          - alert: HighHTTPLatencyP95
+            expr: |
+              histogram_quantile(0.95,
+                sum by (le, endpoint) (rate(http_request_duration_seconds_bucket[5m]))
+              ) > 1.0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "HTTP p95 latency > 1s on {{ $labels.endpoint }}"
+              description: "Endpoint {{ $labels.endpoint }} p95 response time is {{ $value | humanizeDuration }} — above 1s threshold."
+
+      # -------------------------------------------------------
+      # Monte Carlo Simulation Alerts
+      # -------------------------------------------------------
+      - name: simulation_health
+        rules:
+          - alert: SimulationErrorSpike
+            expr: |
+              sum(rate(monte_carlo_simulations_total{status="error"}[5m]))
+              /
+              sum(rate(monte_carlo_simulations_total[5m])) > 0.10
+            for: 2m
+            labels:
+              severity: critical
+              team: backend
+            annotations:
+              summary: "Monte Carlo simulation error rate > 10%"
+              description: "More than 10% of Monte Carlo simulations are failing. Check backend logs for errors."
+
+          - alert: TooManyActiveWebSockets
+            expr: monte_carlo_active_websockets > 50
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High number of active WebSocket connections ({{ $value }})"
+              description: "More than 50 WebSocket streaming connections are active. Consider scaling up."
+
+      # -------------------------------------------------------
+      # Kubernetes & Resource Alerts
+      # -------------------------------------------------------
+      - name: kubernetes_resources
+        rules:
+          - alert: HPAAtMaxReplicas
+            expr: |
+              kube_horizontalpodautoscaler_status_current_replicas{namespace="monte-carlo-sim"}
+              ==
+              kube_horizontalpodautoscaler_spec_max_replicas{namespace="monte-carlo-sim"}
+            for: 5m
+            labels:
+              severity: warning
+              team: devops
+            annotations:
+              summary: "HPA {{ $labels.horizontalpodautoscaler }} is at max replicas"
+              description: "The HPA has scaled to its maximum ({{ $value }} replicas) and cannot scale further. Consider increasing maxReplicas or optimizing the backend."
+
+          - alert: HighMemoryUsage
+            expr: |
+              process_resident_memory_bytes > 400 * 1024 * 1024
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Backend memory usage above 400MB"
+              description: "The backend process is using {{ $value | humanize1024 }}B of resident memory — approaching the 512Mi limit."
+
+          - alert: PodNotReady
+            expr: |
+              kube_pod_status_ready{namespace="monte-carlo-sim", condition="true"} == 0
+            for: 3m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Pod {{ $labels.pod }} is not ready"
+              description: "Pod {{ $labels.pod }} in namespace monte-carlo-sim has been in a not-ready state for over 3 minutes."

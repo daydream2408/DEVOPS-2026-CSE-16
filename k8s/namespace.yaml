@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monte-carlo-sim
+  labels:
+    app.kubernetes.io/name: monte-carlo-sim
+    app.kubernetes.io/part-of: devops-options-pricing

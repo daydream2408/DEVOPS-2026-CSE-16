@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  namespace: monte-carlo-sim
+  labels:
+    app: options-frontend
+    app.kubernetes.io/name: frontend
+    app.kubernetes.io/part-of: devops-options-pricing
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: options-frontend
+  template:
+    metadata:
+      labels:
+        app: options-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: options-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2

@@ -1,0 +1,83 @@
+groups:
+  # -------------------------------------------------------
+  # Service Availability Alerts
+  # -------------------------------------------------------
+  - name: service_availability
+    rules:
+      - alert: BackendDown
+        expr: up{job="options-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Options Backend is DOWN"
+          description: "The options-backend has been unreachable for more than 1 minute."
+
+      - alert: NoIncomingTraffic
+        expr: sum(rate(http_requests_total[5m])) == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No HTTP traffic received for 5 minutes"
+          description: "Zero requests received — check if the service is reachable."
+
+  # -------------------------------------------------------
+  # HTTP Error Rate Alerts
+  # -------------------------------------------------------
+  - name: http_traffic
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HTTP 5xx error rate > 5%"
+          description: "More than 5% of requests are returning server errors."
+
+  # -------------------------------------------------------
+  # Latency Alerts
+  # -------------------------------------------------------
+  - name: latency
+    rules:
+      - alert: HighSimulationLatencyP99
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(monte_carlo_simulation_duration_seconds_bucket[5m]))
+          ) > 2.0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Monte Carlo p99 latency > 2s"
+          description: "Simulation p99 latency: {{ $value | humanizeDuration }}"
+
+  # -------------------------------------------------------
+  # Monte Carlo Simulation Alerts
+  # -------------------------------------------------------
+  - name: simulation_health
+    rules:
+      - alert: SimulationErrorSpike
+        expr: |
+          sum(rate(monte_carlo_simulations_total{status="error"}[5m]))
+          /
+          sum(rate(monte_carlo_simulations_total[5m])) > 0.10
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Monte Carlo error rate > 10%"
+          description: "More than 10% of simulations are failing — check backend logs."
+
+      - alert: TooManyActiveWebSockets
+        expr: monte_carlo_active_websockets > 50
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High active WebSocket connections: {{ $value }}"
+          description: "More than 50 concurrent WebSocket streams active."

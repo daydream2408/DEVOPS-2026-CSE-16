@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monte-carlo-sim
+
+resources:
+  - namespace.yaml
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - frontend-deployment.yaml
+  - frontend-service.yaml
+  - ingress.yaml
+  - hpa.yaml
+  # Prometheus
+  - monitoring/prometheus-rbac.yaml
+  - monitoring/prometheus-pvc.yaml
+  - monitoring/prometheus-configmap.yaml
+  - monitoring/prometheus-alerts.yaml
+  - monitoring/prometheus-deployment.yaml
+  - monitoring/prometheus-service.yaml
+  # Grafana
+  - monitoring/grafana-secret.yaml
+  - monitoring/grafana-pvc.yaml
+  - monitoring/grafana-datasources-configmap.yaml
+  - monitoring/grafana-dashboards-configmap.yaml
+  - monitoring/grafana-deployment.yaml
+  - monitoring/grafana-service.yaml

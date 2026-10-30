@@ -1,0 +1,147 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monte-carlo-sim
+  labels:
+    app: grafana
+data:
+  dashboards.yaml: "apiVersion: 1\nproviders:\n  - name: 'Default'\n    orgId: 1\n\
+    \    folder: 'Options Simulator'\n    type: file\n    disableDeletion: false\n\
+    \    updateIntervalSeconds: 10\n    allowUiUpdates: true\n    options:\n     \
+    \ path: /var/lib/grafana/dashboards\n"
+  options-simulator.json: "{\n  \"annotations\": {\n    \"list\": [\n      {\n   \
+    \     \"builtIn\": 1,\n        \"datasource\": \"-- Grafana --\",\n        \"\
+    enable\": true,\n        \"hide\": true,\n        \"name\": \"Annotations & Alerts\"\
+    ,\n        \"type\": \"dashboard\"\n      }\n    ]\n  },\n  \"editable\": true,\n\
+    \  \"fiscalYearStartMonth\": 0,\n  \"graphTooltip\": 1,\n  \"id\": null,\n  \"\
+    links\": [],\n  \"liveNow\": true,\n  \"panels\": [\n    {\n      \"collapsed\"\
+    : false,\n      \"gridPos\": { \"h\": 1, \"w\": 24, \"x\": 0, \"y\": 0 },\n  \
+    \    \"id\": 100,\n      \"title\": \"Quant Engine Overview\",\n      \"type\"\
+    : \"row\"\n    },\n    {\n      \"id\": 1,\n      \"title\": \"Total Simulations\
+    \ Run\",\n      \"type\": \"stat\",\n      \"gridPos\": { \"h\": 4, \"w\": 6,\
+    \ \"x\": 0, \"y\": 1 },\n      \"datasource\": { \"type\": \"prometheus\", \"\
+    uid\": \"prometheus\" },\n      \"targets\": [\n        {\n          \"expr\"\
+    : \"sum(monte_carlo_simulations_total) or vector(0)\",\n          \"refId\": \"\
+    A\"\n        }\n      ],\n      \"options\": {\n        \"colorMode\": \"value\"\
+    ,\n        \"graphMode\": \"area\",\n        \"justifyMode\": \"auto\",\n    \
+    \    \"reduceOptions\": { \"calcs\": [\"lastNotNull\"], \"values\": false }\n\
+    \      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"color\"\
+    : { \"mode\": \"palette-classic\" },\n          \"mappings\": [],\n          \"\
+    thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\": [\n\
+    \              { \"color\": \"blue\", \"value\": null },\n              { \"color\"\
+    : \"green\", \"value\": 10 }\n            ]\n          },\n          \"unit\"\
+    : \"short\"\n        }\n      }\n    },\n    {\n      \"id\": 2,\n      \"title\"\
+    : \"Total Simulated Paths\",\n      \"type\": \"stat\",\n      \"gridPos\": {\
+    \ \"h\": 4, \"w\": 6, \"x\": 6, \"y\": 1 },\n      \"datasource\": { \"type\"\
+    : \"prometheus\", \"uid\": \"prometheus\" },\n      \"targets\": [\n        {\n\
+    \          \"expr\": \"sum(monte_carlo_simulated_paths_total) or vector(0)\",\n\
+    \          \"refId\": \"A\"\n        }\n      ],\n      \"options\": {\n     \
+    \   \"colorMode\": \"value\",\n        \"graphMode\": \"area\",\n        \"justifyMode\"\
+    : \"auto\",\n        \"reduceOptions\": { \"calcs\": [\"lastNotNull\"], \"values\"\
+    : false }\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n     \
+    \     \"color\": { \"mode\": \"palette-classic\" },\n          \"mappings\": [],\n\
+    \          \"thresholds\": {\n            \"mode\": \"absolute\",\n          \
+    \  \"steps\": [\n              { \"color\": \"purple\", \"value\": null },\n \
+    \             { \"color\": \"semi-dark-purple\", \"value\": 10000 }\n        \
+    \    ]\n          },\n          \"unit\": \"locale\"\n        }\n      }\n   \
+    \ },\n    {\n      \"id\": 3,\n      \"title\": \"Active WebSocket Streams\",\n\
+    \      \"type\": \"stat\",\n      \"gridPos\": { \"h\": 4, \"w\": 6, \"x\": 12,\
+    \ \"y\": 1 },\n      \"datasource\": { \"type\": \"prometheus\", \"uid\": \"prometheus\"\
+    \ },\n      \"targets\": [\n        {\n          \"expr\": \"monte_carlo_active_websockets\
+    \ or vector(0)\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"options\"\
+    : {\n        \"colorMode\": \"value\",\n        \"graphMode\": \"none\",\n   \
+    \     \"justifyMode\": \"auto\",\n        \"reduceOptions\": { \"calcs\": [\"\
+    lastNotNull\"], \"values\": false }\n      },\n      \"fieldConfig\": {\n    \
+    \    \"defaults\": {\n          \"color\": { \"mode\": \"palette-classic\" },\n\
+    \          \"thresholds\": {\n            \"mode\": \"absolute\",\n          \
+    \  \"steps\": [\n              { \"color\": \"green\", \"value\": null },\n  \
+    \            { \"color\": \"orange\", \"value\": 5 },\n              { \"color\"\
+    : \"red\", \"value\": 20 }\n            ]\n          },\n          \"unit\": \"\
+    short\"\n        }\n      }\n    },\n    {\n      \"id\": 4,\n      \"title\"\
+    : \"Latest Option Price ($)\",\n      \"type\": \"stat\",\n      \"gridPos\":\
+    \ { \"h\": 4, \"w\": 6, \"x\": 18, \"y\": 1 },\n      \"datasource\": { \"type\"\
+    : \"prometheus\", \"uid\": \"prometheus\" },\n      \"targets\": [\n        {\n\
+    \          \"expr\": \"monte_carlo_last_simulated_price or vector(0)\",\n    \
+    \      \"legendFormat\": \"{{option_type}} {{style}}\",\n          \"refId\":\
+    \ \"A\"\n        }\n      ],\n      \"options\": {\n        \"colorMode\": \"\
+    value\",\n        \"graphMode\": \"area\",\n        \"justifyMode\": \"auto\"\
+    ,\n        \"reduceOptions\": { \"calcs\": [\"lastNotNull\"], \"values\": false\
+    \ }\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"\
+    color\": { \"mode\": \"thresholds\" },\n          \"decimals\": 4,\n         \
+    \ \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\"\
+    : [{ \"color\": \"green\", \"value\": null }]\n          },\n          \"unit\"\
+    : \"currencyUSD\"\n        }\n      }\n    },\n    {\n      \"collapsed\": false,\n\
+    \      \"gridPos\": { \"h\": 1, \"w\": 24, \"x\": 0, \"y\": 5 },\n      \"id\"\
+    : 101,\n      \"title\": \"Performance & Latency\",\n      \"type\": \"row\"\n\
+    \    },\n    {\n      \"id\": 5,\n      \"title\": \"Simulation Throughput (Ops/sec)\"\
+    ,\n      \"type\": \"timeseries\",\n      \"gridPos\": { \"h\": 8, \"w\": 12,\
+    \ \"x\": 0, \"y\": 6 },\n      \"datasource\": { \"type\": \"prometheus\", \"\
+    uid\": \"prometheus\" },\n      \"targets\": [\n        {\n          \"expr\"\
+    : \"sum by (option_type, style) (rate(monte_carlo_simulations_total[1m]))\",\n\
+    \          \"legendFormat\": \"{{option_type}} - {{style}}\",\n          \"refId\"\
+    : \"A\"\n        }\n      ],\n      \"fieldConfig\": {\n        \"defaults\":\
+    \ {\n          \"custom\": {\n            \"drawStyle\": \"line\",\n         \
+    \   \"lineInterpolation\": \"smooth\",\n            \"lineWidth\": 2,\n      \
+    \      \"fillOpacity\": 20\n          },\n          \"unit\": \"ops\"\n      \
+    \  }\n      }\n    },\n    {\n      \"id\": 6,\n      \"title\": \"Monte Carlo\
+    \ Simulation Latency (p50 / p90 / p99)\",\n      \"type\": \"timeseries\",\n \
+    \     \"gridPos\": { \"h\": 8, \"w\": 12, \"x\": 12, \"y\": 6 },\n      \"datasource\"\
+    : { \"type\": \"prometheus\", \"uid\": \"prometheus\" },\n      \"targets\": [\n\
+    \        {\n          \"expr\": \"histogram_quantile(0.50, sum by (le) (rate(monte_carlo_simulation_duration_seconds_bucket[1m])))\"\
+    ,\n          \"legendFormat\": \"p50 (median)\",\n          \"refId\": \"A\"\n\
+    \        },\n        {\n          \"expr\": \"histogram_quantile(0.90, sum by\
+    \ (le) (rate(monte_carlo_simulation_duration_seconds_bucket[1m])))\",\n      \
+    \    \"legendFormat\": \"p90\",\n          \"refId\": \"B\"\n        },\n    \
+    \    {\n          \"expr\": \"histogram_quantile(0.99, sum by (le) (rate(monte_carlo_simulation_duration_seconds_bucket[1m])))\"\
+    ,\n          \"legendFormat\": \"p99\",\n          \"refId\": \"C\"\n        }\n\
+    \      ],\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"custom\"\
+    : {\n            \"drawStyle\": \"line\",\n            \"lineInterpolation\":\
+    \ \"smooth\",\n            \"lineWidth\": 2\n          },\n          \"unit\"\
+    : \"s\"\n        }\n      }\n    },\n    {\n      \"collapsed\": false,\n    \
+    \  \"gridPos\": { \"h\": 1, \"w\": 24, \"x\": 0, \"y\": 14 },\n      \"id\": 102,\n\
+    \      \"title\": \"API Traffic & Reliability\",\n      \"type\": \"row\"\n  \
+    \  },\n    {\n      \"id\": 7,\n      \"title\": \"HTTP Request Rate by Endpoint\"\
+    ,\n      \"type\": \"timeseries\",\n      \"gridPos\": { \"h\": 8, \"w\": 12,\
+    \ \"x\": 0, \"y\": 15 },\n      \"datasource\": { \"type\": \"prometheus\", \"\
+    uid\": \"prometheus\" },\n      \"targets\": [\n        {\n          \"expr\"\
+    : \"sum by (endpoint) (rate(http_requests_total[1m]))\",\n          \"legendFormat\"\
+    : \"{{endpoint}}\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"\
+    fieldConfig\": {\n        \"defaults\": {\n          \"custom\": {\n         \
+    \   \"drawStyle\": \"line\",\n            \"lineInterpolation\": \"linear\",\n\
+    \            \"lineWidth\": 2,\n            \"fillOpacity\": 15\n          },\n\
+    \          \"unit\": \"reqps\"\n        }\n      }\n    },\n    {\n      \"id\"\
+    : 8,\n      \"title\": \"HTTP Status Codes (2xx, 4xx, 5xx)\",\n      \"type\"\
+    : \"timeseries\",\n      \"gridPos\": { \"h\": 8, \"w\": 12, \"x\": 12, \"y\"\
+    : 15 },\n      \"datasource\": { \"type\": \"prometheus\", \"uid\": \"prometheus\"\
+    \ },\n      \"targets\": [\n        {\n          \"expr\": \"sum by (status) (rate(http_requests_total[1m]))\"\
+    ,\n          \"legendFormat\": \"HTTP {{status}}\",\n          \"refId\": \"A\"\
+    \n        }\n      ],\n      \"fieldConfig\": {\n        \"defaults\": {\n   \
+    \       \"custom\": {\n            \"drawStyle\": \"bars\",\n            \"fillOpacity\"\
+    : 80\n          },\n          \"unit\": \"reqps\"\n        }\n      }\n    },\n\
+    \    {\n      \"collapsed\": false,\n      \"gridPos\": { \"h\": 1, \"w\": 24,\
+    \ \"x\": 0, \"y\": 23 },\n      \"id\": 103,\n      \"title\": \"System & Runtime\
+    \ Telemetry\",\n      \"type\": \"row\"\n    },\n    {\n      \"id\": 9,\n   \
+    \   \"title\": \"Process Resident Memory (RSS)\",\n      \"type\": \"timeseries\"\
+    ,\n      \"gridPos\": { \"h\": 7, \"w\": 12, \"x\": 0, \"y\": 24 },\n      \"\
+    datasource\": { \"type\": \"prometheus\", \"uid\": \"prometheus\" },\n      \"\
+    targets\": [\n        {\n          \"expr\": \"process_resident_memory_bytes or\
+    \ vector(0)\",\n          \"legendFormat\": \"Backend Memory\",\n          \"\
+    refId\": \"A\"\n        }\n      ],\n      \"fieldConfig\": {\n        \"defaults\"\
+    : {\n          \"custom\": {\n            \"drawStyle\": \"line\",\n         \
+    \   \"fillOpacity\": 15\n          },\n          \"unit\": \"bytes\"\n       \
+    \ }\n      }\n    },\n    {\n      \"id\": 10,\n      \"title\": \"Process CPU\
+    \ Usage Rate\",\n      \"type\": \"timeseries\",\n      \"gridPos\": { \"h\":\
+    \ 7, \"w\": 12, \"x\": 12, \"y\": 24 },\n      \"datasource\": { \"type\": \"\
+    prometheus\", \"uid\": \"prometheus\" },\n      \"targets\": [\n        {\n  \
+    \        \"expr\": \"rate(process_cpu_seconds_total[1m]) or vector(0)\",\n   \
+    \       \"legendFormat\": \"Backend CPU Time\",\n          \"refId\": \"A\"\n\
+    \        }\n      ],\n      \"fieldConfig\": {\n        \"defaults\": {\n    \
+    \      \"custom\": {\n            \"drawStyle\": \"line\",\n            \"fillOpacity\"\
+    : 15\n          },\n          \"unit\": \"percentunit\"\n        }\n      }\n\
+    \    }\n  ],\n  \"refresh\": \"5s\",\n  \"schemaVersion\": 38,\n  \"style\": \"\
+    dark\",\n  \"tags\": [\"monte-carlo\", \"fastapi\", \"devops\", \"options-pricing\"\
+    ],\n  \"time\": { \"from\": \"now-15m\", \"to\": \"now\" },\n  \"timepicker\"\
+    : {\n    \"refresh_intervals\": [\"5s\", \"10s\", \"30s\", \"1m\"]\n  },\n  \"\
+    timezone\": \"browser\",\n  \"title\": \"Monte Carlo Options Simulator & DevOps\
+    \ Metrics\",\n  \"uid\": \"options-simulator-main\",\n  \"version\": 1\n}\n"
