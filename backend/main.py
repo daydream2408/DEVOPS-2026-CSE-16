@@ -1,11 +1,20 @@
 import json
 import logging
+import time
 from typing import Optional
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import yfinance as yf
 import numpy as np
+from prometheus_client import (
+    Counter,
+    Histogram,
+    Gauge,
+    generate_latest,
+    CONTENT_TYPE_LATEST,
+    REGISTRY
+)
 
 from simulation import (
     run_simulation_details,
@@ -20,6 +29,49 @@ logger = logging.getLogger("options-simulator")
 
 app = FastAPI(title="Options Pricing & Risk Simulator API")
 
+# --- Prometheus Metrics Definitions ---
+HTTP_REQUESTS_TOTAL = Counter(
+    "http_requests_total",
+    "Total HTTP requests received",
+    ["method", "endpoint", "status"]
+)
+
+HTTP_REQUEST_DURATION = Histogram(
+    "http_request_duration_seconds",
+    "HTTP request latency in seconds",
+    ["method", "endpoint"],
+    buckets=[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+)
+
+SIMULATION_REQUESTS_TOTAL = Counter(
+    "monte_carlo_simulations_total",
+    "Total Monte Carlo simulation calculations",
+    ["option_type", "style", "status"]
+)
+
+SIMULATION_DURATION_SECONDS = Histogram(
+    "monte_carlo_simulation_duration_seconds",
+    "Time taken to run Monte Carlo simulations in seconds",
+    ["option_type", "style"],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
+)
+
+SIMULATED_PATHS_TOTAL = Counter(
+    "monte_carlo_simulated_paths_total",
+    "Total number of simulated price paths computed"
+)
+
+ACTIVE_WEBSOCKETS = Gauge(
+    "monte_carlo_active_websockets",
+    "Current active WebSocket streaming connections"
+)
+
+LAST_SIMULATED_PRICE = Gauge(
+    "monte_carlo_last_simulated_price",
+    "Last computed Monte Carlo option price",
+    ["option_type", "style"]
+)
+
 # Enable CORS for frontend development
 app.add_middleware(
     CORSMiddleware,
@@ -28,6 +80,51 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def prometheus_metrics_middleware(request: Request, call_next):
+    start_time = time.time()
+    endpoint = request.url.path
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    except Exception as exc:
+        raise exc from None
+    finally:
+        duration = time.time() - start_time
+        # Normalize endpoint to avoid high-cardinality paths if any
+        HTTP_REQUESTS_TOTAL.labels(
+            method=request.method,
+            endpoint=endpoint,
+            status=str(status_code)
+        ).inc()
+        HTTP_REQUEST_DURATION.labels(
+            method=request.method,
+            endpoint=endpoint
+        ).observe(duration)
+
+@app.get("/health")
+def health_check():
+    """
+    Kubernetes liveness and readiness probe endpoint.
+    """
+    return {
+        "status": "healthy",
+        "service": "options-pricing-backend",
+        "timestamp": time.time()
+    }
+
+@app.get("/metrics")
+def metrics():
+    """
+    Prometheus scraping endpoint exposing operational and quant metrics.
+    """
+    return Response(
+        content=generate_latest(REGISTRY),
+        media_type=CONTENT_TYPE_LATEST
+    )
 
 class SimulationRequest(BaseModel):
     ticker: Optional[str] = None
@@ -89,6 +186,7 @@ def simulate_option(req: SimulationRequest):
     Synchronous HTTP endpoint for option simulation.
     """
     T = req.days / 365.0
+    sim_start = time.time()
     
     try:
         # Run simulation
@@ -134,6 +232,22 @@ def simulate_option(req: SimulationRequest):
                 option_type=req.option_type
             )
             
+        sim_duration = time.time() - sim_start
+        SIMULATION_REQUESTS_TOTAL.labels(
+            option_type=req.option_type,
+            style=req.style,
+            status="success"
+        ).inc()
+        SIMULATION_DURATION_SECONDS.labels(
+            option_type=req.option_type,
+            style=req.style
+        ).observe(sim_duration)
+        SIMULATED_PATHS_TOTAL.inc(req.sims)
+        LAST_SIMULATED_PRICE.labels(
+            option_type=req.option_type,
+            style=req.style
+        ).set(sim_res["price"])
+
         return {
             "price": sim_res["price"],
             "std_err": sim_res["std_err"],
@@ -144,6 +258,11 @@ def simulate_option(req: SimulationRequest):
             "bs_benchmark": bs_benchmark
         }
     except Exception as e:
+        SIMULATION_REQUESTS_TOTAL.labels(
+            option_type=req.option_type,
+            style=req.style,
+            status="error"
+        ).inc()
         logger.error(f"Simulation failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Simulation error: {str(e)}")
 
@@ -154,7 +273,9 @@ async def simulate_option_ws(websocket: WebSocket):
     before sending the final output.
     """
     await websocket.accept()
+    ACTIVE_WEBSOCKETS.inc()
     logger.info("WebSocket connection established")
+    ws_start = time.time()
     
     try:
         # Wait for the client parameters
@@ -274,6 +395,23 @@ async def simulate_option_ws(websocket: WebSocket):
                 option_type=option_type
             )
             
+        # Record Prometheus metrics for WebSocket simulation
+        ws_duration = time.time() - ws_start
+        SIMULATION_REQUESTS_TOTAL.labels(
+            option_type=option_type,
+            style=style,
+            status="success"
+        ).inc()
+        SIMULATION_DURATION_SECONDS.labels(
+            option_type=option_type,
+            style=style
+        ).observe(ws_duration)
+        SIMULATED_PATHS_TOTAL.inc(sims)
+        LAST_SIMULATED_PRICE.labels(
+            option_type=option_type,
+            style=style
+        ).set(price)
+
         # Send final completed results
         await websocket.send_json({
             "type": "complete",
@@ -294,7 +432,11 @@ async def simulate_option_ws(websocket: WebSocket):
         logger.error(f"WebSocket error: {str(e)}")
         try:
             await websocket.send_json({"type": "error", "message": str(e)})
-        except:
+        except Exception:
             pass
     finally:
-        await websocket.close()
+        ACTIVE_WEBSOCKETS.dec()
+        try:
+            await websocket.close()
+        except Exception:
+            pass

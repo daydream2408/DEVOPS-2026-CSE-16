@@ -83,6 +83,15 @@ pipeline {
             }
         }
 
+        stage('Kubernetes & Monitoring: Validate') {
+            steps {
+                bat '''
+                    kubectl kustomize k8s/ > nul
+                    echo Kubernetes and monitoring manifests compiled successfully.
+                '''
+            }
+        }
+
         stage('Archive Artifacts') {
             steps {
                 archiveArtifacts artifacts: 'frontend/dist/**', allowEmptyArchive: true

@@ -6,3 +6,4 @@ yfinance
 pandas
 pytest
 flake8
+prometheus-client
