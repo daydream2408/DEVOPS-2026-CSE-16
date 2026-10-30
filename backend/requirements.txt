@@ -7,3 +7,4 @@ pandas
 pytest
 flake8
 prometheus-client
+httpx
